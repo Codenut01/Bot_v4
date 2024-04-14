@@ -1,5 +1,4 @@
-
-from constants import ZSCORE_THRESH, USD_PER_TRADE, USD_MIN_COLLATERAL, RESOLUTION, WINDOW, TOKEN_FACTOR_10
+from constants import ZSCORE_THRESH_BUY, ZSCORE_THRESH_SELL, POSITION_SIZE_PCT, MAX_LEVERAGE, USD_MIN_COLLATERAL, TOKEN_FACTOR_10, DYDX_ADDRESS
 from func_utils import format_number
 from func_public import get_candles_recent
 from func_cointegration import calculate_zscore
@@ -9,13 +8,12 @@ import pandas as pd
 import json
 from pprint import pprint
 
-
+address = DYDX_ADDRESS
 
 # Open positions
 def open_positions(client):
-
     '''
-        Manange finding triggers for trade entry
+        Manage finding triggers for trade entry
         Store trades for managing later on on exit function
     '''
 
@@ -23,7 +21,7 @@ def open_positions(client):
     df = pd.read_csv("cointegrated_pairs.csv")
 
     # Get markets from referencing of min order size, tick size etc
-    markets = client.public.get_markets().data
+    markets = client.markets.get_perpetual_markets().data
 
     # Initialize container for BotAgent results
     bot_agent = []
@@ -57,7 +55,7 @@ def open_positions(client):
             z_score = calculate_zscore(spread).values.tolist()[-1]
 
             # Establish if potential trade
-            if abs(z_score) > ZSCORE_THRESH:
+            if (abs(z_score) > ZSCORE_THRESH_BUY and z_score < 0) or (abs(z_score) > ZSCORE_THRESH_SELL and z_score > 0):
 
                 # Ensure like-for-like not already open (diversify trading)
                 is_base_open = is_open_positions(client, base_market)
@@ -81,7 +79,7 @@ def open_positions(client):
                     accept_base_price = float(base_price) * 1.01 if z_score < 0 else float(base_price) * 0.99
                     accept_quote_price = float(quote_price) * 1.01 if z_score > 0 else float(quote_price) * 0.99
 
-                    # Rediculous failsafe price to make sure filled
+                    # Ridiculous failsafe price to make sure filled
                     failsafe_base_price = float(base_price) * 0.05 if z_score < 0 else float(base_price) * 1.50
                     base_tick_size = markets["markets"][base_market]["tickSize"]
                     quote_tick_size = markets["markets"][quote_market]["tickSize"]
@@ -91,12 +89,18 @@ def open_positions(client):
                     accept_quote_price = format_number(accept_quote_price, quote_tick_size)
                     accept_failsafe_base_price = format_number(failsafe_base_price, base_tick_size)
 
-                    # Get size
-                    # Can customize this to content to see
-                    # how much collateral is needed
-                    # how much portion of collateral is used
-                    base_quantity = 1 / base_price * USD_PER_TRADE
-                    quote_quantity = 1 / quote_price * USD_PER_TRADE
+                    # Get account and position size
+                    account = client.account.get_subaccount(address, 0)
+                    free_collateral = float(account.data["subaccount"]["freeCollateral"])
+                    max_position_size = free_collateral * POSITION_SIZE_PCT
+                    base_quantity = max_position_size / base_price
+                    quote_quantity = max_position_size / quote_price
+                    base_step_size = markets["markets"][base_market]["stepSize"]
+                    quote_step_size = markets["markets"][quote_market]["stepSize"]
+
+                    # Adjust position size based on leverage
+                    base_size = format_number(base_quantity / MAX_LEVERAGE, base_step_size)
+                    quote_size = format_number(quote_quantity / MAX_LEVERAGE, quote_step_size)
 
                     ## MODIFIED
                     for particolari in TOKEN_FACTOR_10:
@@ -105,18 +109,8 @@ def open_positions(client):
                         if quote_market == particolari:
                             quote_quantity = float(int(quote_quantity / 10) * 10)
 
-
-                    base_step_size = markets["markets"][base_market]["stepSize"]
-                    quote_step_size = markets["markets"][quote_market]["stepSize"]
-
-                    # Format sizes
-                    base_size = format_number(base_quantity, base_step_size)
-                    quote_size = format_number(quote_quantity, quote_step_size)
-
-                    # Ensure size
-                    # For improvement, can add a check for maxOrderSize
-                    base_min_order_size = markets["markets"][base_market]["minOrderSize"]
-                    quote_min_order_size = markets["markets"][quote_market]["minOrderSize"]
+                    base_min_order_size = markets["markets"][base_market]["stepSize"]
+                    quote_min_order_size = markets["markets"][quote_market]["stepSize"]
                     check_base = float(base_quantity) > float(base_min_order_size)
                     check_quote = float(quote_quantity) > float(quote_min_order_size)
 
@@ -124,8 +118,7 @@ def open_positions(client):
                     if check_base and check_quote:
 
                         # Check account balance
-                        account = client.private.get_account()
-                        free_collatoral = float(account.data['account']["freeCollateral"])
+                        free_collatoral = float(account.data["subaccount"]["freeCollateral"])
                         print(f'Balance: {free_collatoral} and minimum at {USD_MIN_COLLATERAL}')
 
                         # Guard: Ensure collateral
