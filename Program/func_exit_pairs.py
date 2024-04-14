@@ -1,5 +1,4 @@
-
-from constants import CLOSE_AT_ZSCORE_CROSS
+from constants import CLOSE_AT_ZSCORE_CROSS, DYDX_ADDRESS, ZSCORE_THRESH_EXIT
 from func_utils import format_number
 from func_public import get_candles_recent
 from func_cointegration import calculate_zscore
@@ -10,11 +9,12 @@ import json
 import time
 from pprint import pprint
 
+address = DYDX_ADDRESS
 
 # Close positions
 def manage_trade_exits(client):
     '''
-        Manage exiting open poisitions
+        Manage exiting open positions
         Based upon criteria set in constants.py
     '''
 
@@ -33,23 +33,21 @@ def manage_trade_exits(client):
         return "complete"
 
     # Get all open positions per trading platform
-    exchange_pos = client.private.get_positions(status="OPEN")
+    exchange_pos = client.account.get_subaccount_perpetual_positions(address, 0, status="OPEN")
     all_exc_pos = exchange_pos.data["positions"]
     markets_live = []
 
     for p in all_exc_pos:
-        markets_live.append(p["market"])
+        markets_live.append(p["ticker"])
 
     # Protect API
     time.sleep(0.5)
-
-    # pprint(markets_live)
 
     # Check all saved positions match order record
     # Exit trade according to any exit trade rules
     for position in open_positions_dict:
 
-        # Intialize is_close trigger
+        # Initialize is_close trigger
         is_close = False
 
         # Extract position matching information from file - market 1
@@ -66,8 +64,8 @@ def manage_trade_exits(client):
         time.sleep(0.5)
 
         # Get order info m1 per exchange
-        order_m1 = client.private.get_order_by_id(position["order_id_m1"])
-        order_market_m1 = order_m1.data["order"]["market"]
+        order_m1 = client.account.get_order(position["order_id_m1"])
+        order_market_m1 = order_m1.data["order"]["ticker"]
         order_size_m1 = order_m1.data["order"]["size"]
         order_side_m1 = order_m1.data["order"]["side"]
 
@@ -75,8 +73,8 @@ def manage_trade_exits(client):
         time.sleep(0.5)
 
         # Get order info m2 per exchange
-        order_m2 = client.private.get_order_by_id(position["order_id_m2"])
-        order_market_m2 = order_m2.data["order"]["market"]
+        order_m2 = client.account.get_order(position["order_id_m2"])
+        order_market_m2 = order_m2.data["order"]["ticker"]
         order_size_m2 = order_m2.data["order"]["size"]
         order_side_m2 = order_m2.data["order"]["side"]
 
@@ -90,7 +88,6 @@ def manage_trade_exits(client):
             print(f"Warning: Not all open positions match order record for {position_market_m1} and {position_market_m2}")
             continue
 
-
         # Get prices
         series_1 = get_candles_recent(client, position_market_m1)
         time.sleep(0.2)
@@ -98,7 +95,7 @@ def manage_trade_exits(client):
         time.sleep(0.2)
 
         # Get markets for reference of tick size
-        markets = client.public.get_markets().data
+        markets = client.markets.get_perpetual_markets().data
 
         # Protect API
         time.sleep(0.2)
@@ -110,12 +107,11 @@ def manage_trade_exits(client):
             hedge_ratio = position["hedge_ratio"]
             z_score_traded = position["z_score"]
             if len(series_1) > 0 and len(series_1) == len(series_2):
-                spread = series_1 = (hedge_ratio * series_2)
+                spread = series_1 - (hedge_ratio * series_2)
                 z_score_current = calculate_zscore(spread).values.tolist()[-1]
 
-
             # Determine trigger
-            z_score_level_check = abs(z_score_current) >= abs(z_score_traded)
+            z_score_level_check = abs(z_score_current) >= ZSCORE_THRESH_EXIT
             z_score_cross_check = (z_score_current < 0 and z_score_traded > 0) or (z_score_traded < 0 and z_score_current > 0)
 
             # Close trade if trigger met
@@ -123,10 +119,6 @@ def manage_trade_exits(client):
 
                 # Initiate close trigger
                 is_close = True
-        ###
-        # Add additional exit criteria here
-        # Trigger is_close
-        ###
 
         # Close trade if trigger met
         if is_close:
@@ -192,13 +184,10 @@ def manage_trade_exits(client):
                 # Protect API
                 time.sleep(1)
 
-
-
             except Exception as e:
                 print(f"Exit failed for {position_market_m1} with {position_market_m2}")
                 print(e)
                 save_output.append(position)
-
 
         # Keep record of items and save
         else:
