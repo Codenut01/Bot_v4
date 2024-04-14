@@ -1,18 +1,22 @@
-
 from func_private import place_market_order, check_order_status
 from datetime import datetime, timedelta
 import time
 from func_messaging import send_message
+from v4_client_py.clients import CompositeClient
+from v4_client_py.clients.constants import Network
 
 from pprint import pprint
 
+network = Network.config_network()
+Client = CompositeClient(
+    network,
+)
 
 # Class: Agent for managing opening and checking trades
 class BotAgent:
-
-    '''
-        Primary function of BotAgent handles opening and checking order status
-    '''
+    """
+    Primary function of BotAgent handles opening and checking order status
+    """
 
     # Initialize class
     def __init__(
@@ -30,10 +34,11 @@ class BotAgent:
         z_score,
         half_life,
         hedge_ratio,
-        ):
+    ):
 
         # Initialize class variables
         self.client = client
+        self.Client = Client
         self.market_1 = market_1
         self.market_2 = market_2
         self.base_side = base_side
@@ -63,19 +68,18 @@ class BotAgent:
             "order_m2_side": quote_side,
             "order_time_m2": "",
             "pair_status": "",
-            "comments": ""
+            "comments": "",
         }
-
 
     # Check order status by id
     def check_order_status_by_id(self, order_id):
-        '''
-            Input:
-                1) Client information from func_connections.py
-                2) Order ID
-            Output:
-                1) Order status
-        '''
+        """
+        Input:
+            1) Client information from func_connections.py
+            2) Order ID
+        Output:
+            1) Order status
+        """
 
         # Allow time to procee
         time.sleep(5)
@@ -102,7 +106,7 @@ class BotAgent:
 
             # Guard: If not filled, cancel order
             if order_status != "FILLED":
-                self.client.private.cancel_order(order_id=order_id)
+                self.Client.cancel_order(order_id=order_id)
                 self.order_dict["pair_status"] = "ERROR"
                 print(f"{self.market_1} vs {self.market_2} Order error...")
                 return "error"
@@ -127,17 +131,22 @@ class BotAgent:
                 side=self.base_side,
                 size=self.base_size,
                 price=self.base_price,
-                reduce_only=False
+                reduce_only=False,
             )
 
+            if base_order is None:
+                print(f"Error placing order for {self.market_1}: base_order is None")
+                self.order_dict["pair_status"] = "ERROR"
+                self.order_dict["comments"] = f"Error placing order for {self.market_1}: base_order is None"
+                return self.order_dict
+
             # Store the order ID
-            self.order_dict["order_id_m1"] = base_order['order']['id']
+            self.order_dict["order_id_m1"] = base_order.get('order', {}).get('id', '')
             self.order_dict["order_time_m1"] = datetime.now().isoformat()
         except Exception as e:
             print(f"The ERROR is {e}")
-            exit(1)
             self.order_dict["pair_status"] = "ERROR"
-            self.order_dict["comments"] = f"Market 1 {self.market_1}:,  {e}"
+            self.order_dict["comments"] = f"Market 1 {self.market_1}:  {e}"
             return self.order_dict
 
         # Ensure order is live before processing
@@ -163,15 +172,21 @@ class BotAgent:
                 side=self.quote_side,
                 size=self.quote_size,
                 price=self.quote_price,
-                reduce_only=False
+                reduce_only=False,
             )
 
+            if quote_order is None:
+                print(f"Error placing order for {self.market_2}: quote_order is None")
+                self.order_dict["pair_status"] = "ERROR"
+                self.order_dict["comments"] = f"Error placing order for {self.market_2}: quote_order is None"
+                return self.order_dict
+
             # Store the order ID
-            self.order_dict["order_id_m2"] = quote_order['order']['id']
+            self.order_dict["order_id_m2"] = quote_order.get('order', {}).get('id', '')
             self.order_dict["order_time_m2"] = datetime.now().isoformat()
         except Exception as e:
             self.order_dict["pair_status"] = "ERROR"
-            self.order_dict["comments"] = f"Market 2 {self.market_2}:,  {e}"
+            self.order_dict["comments"] = f"Market 2 {self.market_2}:  {e}"
             return self.order_dict
 
         # Ensure order is live before processing
@@ -185,13 +200,13 @@ class BotAgent:
             # Close order 1 if order 2 failed:
             try:
                 close_order = place_market_order(
-                self.client,
-                market=self.market_1,
-                side=self.quote_side,
-                size=self.base_size,
-                price=self.accept_failsafe_base_price,
-                reduce_only=True
-            )
+                    self.client,
+                    market=self.market_1,
+                    side=self.quote_side,
+                    size=self.base_size,
+                    price=self.accept_failsafe_base_price,
+                    reduce_only=True
+                )
 
                 # Ensure order is live before proceeding
                 time.sleep(5)
