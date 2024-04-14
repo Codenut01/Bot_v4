@@ -44,7 +44,7 @@ def place_market_order(client, market, side, size, price, reduce_only):
             price=float(price),
             good_til_time_in_seconds=int(expiration.timestamp()),
             time_in_force=OrderTimeInForce.FOK,
-            good_til_block=composite_client.get_current_block() + 21,
+            good_til_block=composite_client.get_current_block() + 20,
             execution=OrderExecution.DEFAULT,
             reduce_only=reduce_only
         )
