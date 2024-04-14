@@ -1,7 +1,5 @@
-![image](https://github.com/HowardLiYH/dydx-trading-bot/assets/60827239/ab62edcf-6fd5-47c2-9582-c21819639e81)
 
-
-# Automated Pair Trading on DYDX (V3)
+# Automated Pair Trading on DYDX (V4)
 
 ![Screenshot 2023-12-11 at 1 52 27 AM](https://github.com/HowardLiYH/dydx-trading-bot/assets/60827239/22a1623b-2d25-4a80-a7a0-e57845573f79)
 
