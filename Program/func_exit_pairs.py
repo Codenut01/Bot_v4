@@ -1,4 +1,5 @@
-from constants import CLOSE_AT_ZSCORE_CROSS, DYDX_ADDRESS, ZSCORE_THRESH_EXIT
+
+from constants import CLOSE_AT_ZSCORE_CROSS, DYDX_ADDRESS
 from func_utils import format_number
 from func_public import get_candles_recent
 from func_cointegration import calculate_zscore
@@ -11,10 +12,11 @@ from pprint import pprint
 
 address = DYDX_ADDRESS
 
+
 # Close positions
 def manage_trade_exits(client):
     '''
-        Manage exiting open positions
+        Manage exiting open poisitions
         Based upon criteria set in constants.py
     '''
 
@@ -43,11 +45,13 @@ def manage_trade_exits(client):
     # Protect API
     time.sleep(0.5)
 
+    # pprint(markets_live)
+
     # Check all saved positions match order record
     # Exit trade according to any exit trade rules
     for position in open_positions_dict:
 
-        # Initialize is_close trigger
+        # Intialize is_close trigger
         is_close = False
 
         # Extract position matching information from file - market 1
@@ -88,6 +92,7 @@ def manage_trade_exits(client):
             print(f"Warning: Not all open positions match order record for {position_market_m1} and {position_market_m2}")
             continue
 
+
         # Get prices
         series_1 = get_candles_recent(client, position_market_m1)
         time.sleep(0.2)
@@ -107,11 +112,12 @@ def manage_trade_exits(client):
             hedge_ratio = position["hedge_ratio"]
             z_score_traded = position["z_score"]
             if len(series_1) > 0 and len(series_1) == len(series_2):
-                spread = series_1 - (hedge_ratio * series_2)
+                spread = series_1 = (hedge_ratio * series_2)
                 z_score_current = calculate_zscore(spread).values.tolist()[-1]
 
+
             # Determine trigger
-            z_score_level_check = abs(z_score_current) >= ZSCORE_THRESH_EXIT
+            z_score_level_check = abs(z_score_current) >= abs(z_score_traded)
             z_score_cross_check = (z_score_current < 0 and z_score_traded > 0) or (z_score_traded < 0 and z_score_current > 0)
 
             # Close trade if trigger met
@@ -119,6 +125,10 @@ def manage_trade_exits(client):
 
                 # Initiate close trigger
                 is_close = True
+        ###
+        # Add additional exit criteria here
+        # Trigger is_close
+        ###
 
         # Close trade if trigger met
         if is_close:
@@ -184,10 +194,13 @@ def manage_trade_exits(client):
                 # Protect API
                 time.sleep(1)
 
+
+
             except Exception as e:
                 print(f"Exit failed for {position_market_m1} with {position_market_m2}")
                 print(e)
                 save_output.append(position)
+
 
         # Keep record of items and save
         else:
