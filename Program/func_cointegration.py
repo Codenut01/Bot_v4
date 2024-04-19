@@ -7,7 +7,7 @@ import pandas as pd
 import numpy as np
 import statsmodels.api as sm
 from statsmodels.tsa.stattools import coint
-from backtest import MAX_HALF_LIFE, WINDOW
+from constants import MAX_HALF_LIFE, WINDOW
 
 
 # Calculate Half Life
