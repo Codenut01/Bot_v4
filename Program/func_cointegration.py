@@ -2,14 +2,17 @@
 Define functions will be used to calculate cointegration
 '''
 
+
 import pandas as pd
 import numpy as np
 import statsmodels.api as sm
-from statsmodels.tsa.vector_ar.vecm import coint_johansen
+from statsmodels.tsa.stattools import coint
 from constants import MAX_HALF_LIFE, WINDOW
 
+
 # Calculate Half Life
-# https://www.pythonforwinance.net/2016/05/09/python-backtesting-mean-reversion-part-2/
+# https://www.pythonforfinance.net/2016/05/09/python-backtesting-mean-reversion-part-2/
+
 
 def calculate_half_life(spread):
     '''
@@ -27,6 +30,7 @@ def calculate_half_life(spread):
     half_life = int(round(-np.log(2) / res.params[1], 0))
     return half_life
 
+
 # Calculate ZScore
 def calculate_zscore(spread):
     spread_series = pd.Series(spread)
@@ -36,6 +40,7 @@ def calculate_zscore(spread):
     zscore = (x - mean) / std
     return zscore
 
+
 # Calculate Cointegration
 def calculate_cointegration(series_1, series_2):
     '''
@@ -44,24 +49,33 @@ def calculate_cointegration(series_1, series_2):
     '''
     series_1 = np.array(series_1).astype(np.float)
     series_2 = np.array(series_2).astype(np.float)
+    coint_flag = 0
 
-    # Use Johansen's method for cointegration analysis
-    coint_result = coint_johansen(np.column_stack((series_1, series_2)), det_order=0, k_ar_diff=1)
+    # The default coint method here from statsmodel is
+    # the Augmented Engled Granger Model
+    coint_res = coint(series_1, series_2)
 
-    # Check for cointegration
-    coint_flag = coint_result.evec.shape[0]  # Cointegration rank
+    # The t-statistic of unit-root test on residuals.
+    coint_t = coint_res[0]
 
-    # Calculate hedge ratio and half-life
-    if coint_flag > 0:
-        model = sm.OLS(series_1, series_2).fit()
-        hedge_ratio = model.params[0]
-        spread = series_1 - (hedge_ratio * series_2)
-        half_life = calculate_half_life(spread)
-    else:
-        hedge_ratio = 0
-        half_life = 0
+    # MacKinnon”s approximate, asymptotic p-value based on MacKinnon (1994).
+    # If p_value is less than 0.05, it is cointegrated
+    p_value = coint_res[1]
 
+    # Critical values for the test statistic at the 1 %, 5 %, and 10 % levels
+    # based on regression curve. This depends on the number of observations.
+    critical_value = coint_res[2][1]
+    model = sm.OLS(series_1, series_2).fit()
+    hedge_ratio = model.params[0]
+    spread = series_1 - (hedge_ratio * series_2)
+    half_life = calculate_half_life(spread)
+
+    # Check on channle for extensive conversation on t_check
+    # the t_value should be less than the critical value
+    t_check = coint_t < critical_value
+    coint_flag = 1 if p_value < 0.05 and t_check else 0
     return coint_flag, hedge_ratio, half_life
+
 
 # Store Cointegration Results
 def store_cointegration_results(df_market_prices):
@@ -73,7 +87,7 @@ def store_cointegration_results(df_market_prices):
     print("Finding Cointegrated Pairs...")
     # Find cointegrated pairs
     # Start with our base pair and Loop through each market
-    # No repetition will happen here
+    # No reptition will happen here
     for index, base_market in enumerate(markets[:-1]):
         # print(f"Checking {base_market}...")
         series_1 = df_market_prices[base_market].values.astype(float).tolist()
@@ -95,6 +109,7 @@ def store_cointegration_results(df_market_prices):
                     "hedge_ratio": hedge_ratio,
                     "half_life": half_life
                 })
+
 
     # Create and save DataFrame
     print("Saving Cointegrated Pairs...")
