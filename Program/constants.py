@@ -1,4 +1,3 @@
-from backtest import optimal_zscore_thresh, max_half_life, optimal_window
 
 # Find Cointegrated Pairs
 FIND_COINTEGRATED_PAIRS = True
