@@ -1,3 +1,4 @@
+import time
 from datetime import datetime, timedelta
 from random import randrange
 from retry import retry
@@ -48,7 +49,9 @@ def place_market_order(client, market, side, size, price, reduce_only):
             execution=OrderExecution.DEFAULT,
             reduce_only=reduce_only
         )
-        return placed_order
+        return placed_order.tx_hash
+        print(f"Order placed for {market}, size {size} at price {price}")
+        send_message(f"Order placed for {market}, size {size} at price {price}")
     except (APIError, NetworkError, ExchangeError) as e:
         print(f"Error placing order for {market}: {e}")
         raise e
@@ -63,13 +66,18 @@ def check_order_status(client, order_id):
         raise e
     return "FAILED"
 
+# Get existing open positions
 def is_open_positions(client, market):
-    try:
-        exchange_pos = client.account.get_subaccount_perpetual_positions(DYDX_ADDRESS, 0, status="OPEN")
-        for position in exchange_pos.data["positions"]:
-            if position["ticker"] == market:
-                return True
-    except (APIError, NetworkError, ExchangeError) as e:
-        print(f"Error checking open positions for {market}: {e}")
-        raise e
-    return False
+    address = DYDX_ADDRESS
+
+    # Protect API
+    time.sleep(0.2)
+
+    # Get positions
+    all_positions = client.account.get_subaccount_perpetual_positions(address, 0, status="OPEN")
+
+    # Determine if open
+    if len(all_positions.data['positions']) > 0:
+        return True
+    else:
+        return False
