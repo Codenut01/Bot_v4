@@ -45,7 +45,7 @@ if __name__ == "__main__":
     if FIND_COINTEGRATED_PAIRS:
         try:
             logging.info("Fetching Market Prices, please allow 3 mins...")
-            df_market_prices = await construct_market_prices(client)
+            df_market_prices = construct_market_prices(client)
             logging.info("Storing cointegrated pairs...")
             store_cointegration_results(df_market_prices)
             df_csv = pd.read_csv("cointegrated_pairs.csv")
