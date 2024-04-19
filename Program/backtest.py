@@ -7,6 +7,7 @@ import numpy as np
 from func_backtest_cointegration import calculate_cointegration, calculate_zscore, calculate_half_life
 from func_public import construct_market_prices
 from func_connections import connect_to_dydx
+from constants import MAX_HALF_LIFE, WINDOW, ZSCORE_THRESH
 
 def calculate_sharpe_ratio(spread):
     """
