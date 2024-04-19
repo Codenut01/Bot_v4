@@ -64,6 +64,10 @@ if __name__ == "__main__":
     optimal_window = max([pair['optimal_window'] for pair in best_pairs])
     optimal_zscore_thresh = max([abs(calculate_zscore(df_market_prices[pair['base_market']] - (pair['hedge_ratio'] * df_market_prices[pair['quote_market']]), pair['optimal_window']).max()) for pair in best_pairs])
 
+    MAX_HALF_LIFE = max_half_life
+    WINDOW = optimal_window
+    ZSCORE_THRESH = optimal_zscore_thresh
+    
     print(f"Optimal MAX_HALF_LIFE: {max_half_life}")
     print(f"Optimal WINDOW: {optimal_window}")
     print(f"Optimal ZSCORE_THRESH: {optimal_zscore_thresh}")
