@@ -12,6 +12,7 @@ Client = CompositeClient(
     network,
 )
 
+
 # Class: Agent for managing opening and checking trades
 class BotAgent:
     """
