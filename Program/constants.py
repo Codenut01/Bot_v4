@@ -9,12 +9,8 @@ PLACE_TRADES = True
 # Manage Exits
 MANAGE_EXITS = True
 
-# Resolution
+# Resolution and inputs
 RESOLUTION = "1HOUR"
-
-ZSCORE_THRESH = optimal_zscore_thresh
-MAX_HALF_LIFE = max_half_life
-WINDOW = optimal_window
 USD_PER_TRADE = 27
 USD_MIN_COLLATERAL = 40
 
