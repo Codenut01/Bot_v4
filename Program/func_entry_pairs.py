@@ -1,5 +1,5 @@
 
-from constants import USD_PER_TRADE, ZSCORE_THRESH, USD_MIN_COLLATERAL, TOKEN_FACTOR_10, DYDX_ADDRESS
+from constants import USD_PER_TRADE, USD_MIN_COLLATERAL, TOKEN_FACTOR_10, DYDX_ADDRESS
 from func_utils import format_number
 from func_public import get_candles_recent
 from func_cointegration import calculate_zscore, calculate_cointegration
@@ -8,6 +8,7 @@ from func_bot_agent import BotAgent
 import pandas as pd
 import json
 from pprint import pprint
+from backtest import ZSCORE_THRESH
 
 address = DYDX_ADDRESS
 
