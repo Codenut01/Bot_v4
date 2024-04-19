@@ -1,3 +1,5 @@
+from backtest import optimal_zscore_thresh, max_half_life, optimal_window
+
 # Find Cointegrated Pairs
 FIND_COINTEGRATED_PAIRS = True
 
@@ -8,21 +10,13 @@ PLACE_TRADES = True
 MANAGE_EXITS = True
 
 # Resolution
-RESOLUTION = "15MINS"
+RESOLUTION = "1HOUR"
 
-# Stats Window
-WINDOW = 21
-
-# Thresholds - Opening
-MAX_HALF_LIFE = 24
-ZSCORE_THRESH = 1.5
-ZSCORE_THRESH_EXIT = 1.6
-ZSCORE_THRESH_BUY = 1.5
-ZSCORE_THRESH_SELL = 1.6
-POSITION_SIZE_PCT = 0.1
-MAX_LEVERAGE = 0.1
+ZSCORE_THRESH = optimal_zscore_thresh
+MAX_HALF_LIFE = max_half_life
+WINDOW = optimal_window
 USD_PER_TRADE = 27
-USD_MIN_COLLATERAL = 60
+USD_MIN_COLLATERAL = 40
 
 # WIERD FACTOR FOR SOME TOKENS
 TOKEN_FACTOR_10 = ["XLM-USD","DOGE-USD","TRON-USD"]
